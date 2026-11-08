@@ -1,98 +1,80 @@
 ---
 date created: 2024-07-01 13:13
-date updated: 2026-10-26T13:14
+date updated: 2026-11-06T18:30
 ---
 
-# Python 标准库
+# Python 常用库
 
-## Python 中与文件相关的库有哪些？
+按任务查找标准库与少量常用扩展，不为每个短小工具单独建文件。并发工具的运行示例集中在 [[concurrency.ipynb|并发与任务队列]]。
 
-- `os`、`os.path` 和 `shutil`
-- `os` 和 `os.path`，模块包含访问文件系统的功能
-- `shutil`，模块使能够复制和删除文件
+## 文件与目录
+
+路径操作优先用 `pathlib`；复制和目录处理用 `shutil`；环境变量、底层系统接口用 `os`。
+
+```python
+from pathlib import Path
+import shutil
+
+source = Path("source.txt")
+destination = Path("target.txt")
+shutil.copy2(source, destination)
+destination.unlink()
+```
+
+删除目录可用 `shutil.rmtree()`，调用前确认路径和范围，不能直接信任外部输入。
+
+### 遍历目录
+
+```python
+from pathlib import Path
+
+for filename in Path("notes").rglob("*"):
+    print(filename)
+```
+
+`iterdir()` 只列当前层，`rglob()` 递归匹配；需要分别处理子目录与文件时用 `os.walk()`，需要目录项属性时可用 `os.scandir()`。
+
+### 大文件读取
+
+逐行处理文本或按块读取二进制，避免一次加载整个文件。`seek()` 可调整读取位置；二进制模式按字节定位更明确。
+
+```python
+chunk_size = 2 * 1024 * 1024
+
+with open("large_file.bin", "rb") as file:
+    for chunk in iter(lambda: file.read(chunk_size), b""):
+        process(chunk)
+```
+
+`process()` 代表实际的数据处理函数。
+
+## 邮件
+
+`email.message.EmailMessage` 组织内容，`smtplib` 连接 SMTP 服务器发送。凭据从环境读取，配置超时并启用 TLS。
 
 ```python
 import os
-import shutil
-
-source = "path/to/source.txt"
-destination = "path/to/target.txt"
-directory_path = "path/to/directory"
-file_path = "path/to/file.txt"
-
-# 复制文件
-shutil.copy(source, destination)
-
-# 删除整个目录
-shutil.rmtree(directory_path)
-
-# 删除文件
-os.remove(file_path)
-```
-
-## 如何用 Python 语言发送电子邮件？
-
-- Python 提供了 `smtplib` 和 `email` 模块，将这些模块导入到创建的邮件脚本中，并通过对用户进行身份验证来发送邮件
-- 它有一个方法 `SMTP(smtp-server, port)`，它需要两个参数来建立 SMTP 连接
-
-```python
 import smtplib
+import ssl
 from email.message import EmailMessage
 
+message = EmailMessage()
+message["From"] = os.environ["SMTP_USERNAME"]
+message["To"] = "receiver@example.com"
+message["Subject"] = "Test Email"
+message.set_content("This is a test email sent by Python.")
 
-sender = "your_email@example.com"
-receiver = "receiver_email@example.com"
-smtp_server = "smtp.example.com"
-username = "your_email_username"
-password = "your_email_password"
-
-msg = EmailMessage()
-msg["From"] = sender
-msg["To"] = receiver
-msg["Subject"] = "Test Email"
-msg.set_content("This is a test email sent by Python.")
-
-with smtplib.SMTP(smtp_server, 587) as server:
-    server.starttls()
-    server.login(username, password)
-    server.send_message(msg)
+with smtplib.SMTP("smtp.example.com", 587, timeout=10) as server:
+    server.starttls(context=ssl.create_default_context())
+    server.login(os.environ["SMTP_USERNAME"], os.environ["SMTP_PASSWORD"])
+    server.send_message(message)
 ```
 
-<!-- 兼容旧版写法 -->
+服务器若要求连接时即加密，使用 `SMTP_SSL` 和对应端口，不再调用 `starttls()`。
 
-```python
-import smtplib
-from email.mime.text import MIMEText
-from email.header import Header
+## 随机数与抽样
 
-# 邮件发送者
-sender = 'your_email@example.com'
-# 邮件接收者
-receiver = 'receiver_email@example.com'
-smtp_server = 'smtp.example.com'
-# 发送者邮箱的用户名和密码
-username = 'your_email_username'
-password = 'your_email_password'
-
-# 邮件主题和内容
-subject = 'Test Email'
-content = 'This is a test email sent by Python.'
-
-# 创建 MIMEText 对象
-msg = MIMEText(content, 'plain', 'utf-8')
-msg['From'] = Header(sender, 'utf-8')
-msg['To'] = Header(receiver, 'utf-8')
-msg['Subject'] = Header(subject, 'utf-8')
-
-with smtplib.SMTP(smtp_server, 587) as server:
-    server.starttls()
-    server.login(username, password)
-    server.sendmail(sender, receiver, msg.as_string())
-```
-
-## 如何在 Python 中生成随机数？
-
-- 使用随机模块 `random`
+`random` 用于模拟、打乱与抽样；密码、验证码和 Token 使用 `secrets`。
 
 ```python
 import random
@@ -107,20 +89,6 @@ print(random.randint(1, 3))          # [1, 3] int
 print(random.normalvariate(mu, sigma))  # 正态分布的浮点数
 ```
 
-```ascii
-0.34713710269387843
-1.586492196951702
-2
-1
--0.34508903504989326
-```
-
-$$
-\sigma = \sqrt{\frac{\sum{(x_i - \mu)^2}}{N}}​​
-$$
-
-## 如何使用 `random` 模块生成随机数、实现随机乱序和随机抽样？
-
 - `random.shuffle(x)` 函数可以实现对序列 `x` 的原地随机乱序
 - `random.choice(seq)` 函数可以从非空序列中取出一个随机元素
 - `random.choices(population, weights=None, *, cum_weights=None, k=1)` 函数可以从总体中随机抽取（有放回抽样）出容量为 `k` 的样本并返回样本的列表，可以通过参数指定个体的权重，如果没有指定权重，个体被选中的概率均等
@@ -128,97 +96,71 @@ $$
 
 > `random` 模块提供的函数除了生成均匀分布的随机数外，还可以生成其他分布的随机数，例如 `random.gauss(mu, sigma)` 函数可以生成高斯分布（正态分布）的随机数
 
-## PYTHONPATH 是什么？
+## 模块与导入
 
-- `PYTHONPATH` 是导入模块时使用的环境变量
-- 每当导入一个模块时，还会查找 `PYTHONPATH` 以检查各个目录中是否存在导入的模块
-- 解释器使用它来确定要加载哪个模块
+模块通常是包含函数、类和变量的 `.py` 文件。普通包使用 `__init__.py`，可在其中初始化包或定义 `__all__`；命名空间包可以没有这个文件。
 
-## Python 中的 pickling 和 unpickling 是什么？
+| 环境变量 | 用途 |
+| --- | --- |
+| `PYTHONPATH` | 向模块搜索路径补充目录；不是系统 `PATH` |
+| `PYTHONHOME` | 修改 Python 标准库位置前缀，虚拟环境中通常不设置 |
+| `PYTHONSTARTUP` | 交互式解释器启动时执行的脚本，不用于普通脚本启动 |
+| `PYTHONCASEOK` | 部分平台允许导入时忽略大小写；不建议依赖 |
 
-- Python pickle 被定义为一个模块，它接受任何 Python 对象并将其转换为字符串表示。它使用 `dump` 函数将 Python 对象转储到一个文件中；这个过程被称为 `pickling`
-- 从存储的字符串表示中检索原始的 Python 对象的过程被称为 `unpickling`
+项目依赖和运行环境优先交给 uv，不靠全局修改这些变量修复导入问题。
 
-## Python 中的模块是什么？
+## 序列化与类型转换
 
-- 模块是包含 Python 代码的文件
-- 此代码可以是函数、类、变量
+- `pickle.dump()` / `load()` 通过二进制流保存和恢复 Python 对象；`dumps()` / `loads()` 处理 `bytes`。不是所有对象都支持序列化，且绝不能加载不可信的 pickle 数据。
+- JSON、Pydantic 与 msgspec 见 [[validation|校验与序列化]]。
+- Python 3 的整数统一使用 `int`；`int("1010", 2)` 返回 `10`。非法字符串抛出 `ValueError`，不支持的类型可能抛出 `TypeError`。
 
-## Python 中常用的内置模块
+## 子进程
 
-- `os`
-- `system`
-- `random`
-- `time`
-- `JSON`
-- `math`
-
-## Python 中常用第三方库
-
-- `pandas`
-- `numpy`
-- `scipy`
-- `redis`
-- `celery`
-- `playwright`
-- `matplotlib`
-- `faker`
-
-> 企业会自己构建库
-
-## Python 中有哪些环境变量，有什么用？
-
-- `PYTHONPATH`，与 PATH 变量相同，Python 解释器使用它来搜索模块文件
-- `PYTHONHOME`，这是一个额外的 PATH 变量来搜索模块
-- `PYTHONSTARTUP`，它存储包含 Python 代码的初始化脚本的路径，每次 Python 解释器启动时它都会运行
-- `PYTHONCASEOK`，在 Windows 中，它使 Python 在 `import` 语句中找到第一个不区分大小写的匹配项，需要将其设置为激活
-
-## 如何在 Python 中将字符串转换/更改为 int 或 long ？
-
-- Python 3 中只有 `int`，不再区分 `int` 和 `long`。
-- `int(x, base=10)` 可将字符串按指定进制转换为整数，例如 `int("1010", 2)` 返回 `10`。
-- 转换失败会抛出 `ValueError`，实际开发中要在用户输入场景做异常处理。
-
-## 如何在 Python 中创建套接字？
-
-- 使用 `socket.socket()` 创建套接字，`AF_INET` 表示 IPv4，`SOCK_STREAM` 表示 TCP。
+一般命令用 `subprocess.run()`；需要流式通信、持续运行或细控生命周期时用 `Popen()`。优先传参数列表，不把用户输入拼进 Shell 命令。
 
 ```python
-import socket
+import subprocess
+import sys
 
-simple_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+result = subprocess.run(
+    [sys.executable, "--version"],
+    check=True,
+    capture_output=True,
+    text=True,
+    timeout=10,
+)
+print(result.stdout.strip())
 ```
 
-## 在 Python 中为什么使用 `__init__.py` 模块？
+`check=True` 使非零退出码抛出 `CalledProcessError`；超时抛出 `TimeoutExpired`。`pty` 用于需要伪终端的场景，不是普通子进程的默认选择。
 
-- 它通过排除具有通用名称 (如字符串) 的目录，使 Python 将目录解释为包
-- 它授予程序员控制权来决定哪个目录是包，哪个不是包
-- 但是，`__init__.py` 也可以是一个空文件。然后它可以帮助执行包的初始化代码或设置 `__all__` 变量。
+## 正则表达式
 
-## 如何在 Python 中运行带有参数的子进程或外部程序？
+### 常用方法
 
-- `os`，`subprocess`，`threading`，`multiprocessing`
-- `subprocess`，现代模块
-	- `subprocess.call()`，运行命令，等待命令完成，并返回命令的退出状态码
-	- `subprocess.run()`，运行命令，等待命令完成，并返回 `CompletedProcess` 对象
-	- `subprocess.Popen()`，运行命令，并提供更多的控制和灵活性，如处理输入输出流和管道
-- `os.system()`
-- `os.popen()`
-- `commands`，旧模块
-- `pty`，伪终端
-- `threading` 和 `multiprocessing`，如果你需要并行运行多个子进程，可以使用这些模块来创建线程或进程
+| 方法 | 用途 |
+| --- | --- |
+| `re.match()` | 从字符串开头匹配 |
+| `re.search()` | 搜索第一个匹配位置 |
+| `re.fullmatch()` | 检查整个字符串是否匹配 |
+| `re.findall()` | 返回所有匹配结果 |
+| `re.sub()` | 替换匹配内容 |
+| `re.split()` | 按匹配位置分割 |
 
-## Python 正则表达式语法
+反复使用同一规则时，可以用 `re.compile()` 保存正则对象。Python 默认 Unicode 模式下，`\d`、`\w` 不只匹配 ASCII 字符；限制英文和数字时明确写范围或使用 `re.ASCII`。
+
+### 语法速查
 
 | 字符类      | 描述                                 |
 | -------- | ---------------------------------- |
 | `.`      | 匹配除换行符之外的任何 `1` 个字符                |
 | `[abc]`  | 匹配方括号内的任意 `1` 个字符                  |
 | `[^abc]` | 匹配不在方括号内的任意 `1` 个字符                |
-| `\d`     | 匹配一个数字字符，等价于 `[0-9]`               |
-| `\D`     | 匹配一个非数字字符，等价于 `[^0-9]`             |
-| `\w`     | 匹配包括下划线的任何单词字符，等价于 `[A-Za-z 0-9_]` |
-| `\W`     | 匹配任何非单词字符，等价于 `[^A-Za-z 0-9_]`     |
+| `\d`     | 匹配一个 Unicode 十进制数字字符；ASCII 模式为 `[0-9]` |
+| `\D`     | 匹配 `\d` 之外的字符；ASCII 模式等价于 `[^0-9]` |
+| `\w`     | 匹配 Unicode 字母数字或下划线；ASCII 模式为 `[A-Za-z0-9_]` |
+| `\W`     | 匹配 `\w` 之外的字符 |
 | `\s`     | 匹配任何空白字符，包括空格、制表符、换行符等等            |
 | `\S`     | 匹配任何非空白字符                          |
 
@@ -229,20 +171,20 @@ simple_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 | `?`      | 匹配前面的子表达式零次或一次         |
 | `{n}`    | `n` 是一个非负整数，恰好匹配 `n` 次 |
 | `{n,}`   | 至少匹配 `n` 次             |
-| `{n, m}` | 至少匹配 `n` 次且最多匹配 `m` 次  |
+| `{n,m}` | 至少匹配 `n` 次且最多匹配 `m` 次  |
 
 | 定位符  | 描述                 |
 | ---- | ------------------ |
 | `^`  | 匹配输入字符串的开始位置       |
 | `$`  | 匹配输入字符串的结束位置       |
-| `\b` | 匹配一个单词边界，即字与空格间的位置 |
+| `\b` | 匹配 `\w` 与 `\W` 之间或字符串首尾的单词边界 |
 | `\B` | 非单词边界匹配            |
 
 | 分组和引用     | 描述                             |
 | --------- | ------------------------------ |
 | `(exp)`   | 匹配 `exp` 并捕获文本到自动命名的组里         |
 | `(?:exp)` | 匹配 `exp` 但不捕获匹配的文本             |
-| `\n`      | `n` 是一个正整数，引用编号为 `n` 的捕获组匹配的文本 |
+| `\1`      | 引用第一个捕获组；`\n` 本身表示换行符 |
 
 | 选择符  | 描述                   |
 | ---- | -------------------- |
@@ -255,57 +197,108 @@ simple_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 | 断言         | 描述                        |
 | ---------- | ------------------------- |
 | `(?=exp)`  | 正向先行断言，匹配 `exp` 前面的位置     |
-| `(?! Exp)` | 负向先行断言，匹配后面跟的不是 `exp` 的位置 |
+| `(?!exp)` | 负向先行断言，匹配后面跟的不是 `exp` 的位置 |
 
-## 贪婪匹配与非贪婪匹配
+### 贪婪与非贪婪
 
 | 贪婪量词     | 非贪婪量词     | 描述                                      |
 | -------- | --------- | --------------------------------------- |
 | `*`      | `*?`      | 匹配前面的元素零次或多次，非贪婪版本会尽可能少地匹配              |
 | `+`      | `+?`      | 匹配前面的元素一次或多次，非贪婪版本会尽可能少地匹配              |
 | `?`      | `??`      | 匹配前面的元素零次或一次，非贪婪版本会尽可能少地匹配              |
-| `{m, n}` | `{m, n}?` | 匹配前面的元素至少 `m` 次但不超过 `n` 次，非贪婪版本会尽可能少地匹配 |
+| `{m,n}` | `{m,n}?` | 匹配前面的元素至少 `m` 次但不超过 `n` 次，非贪婪版本会尽可能少地匹配 |
 
-## 使用 Python 代码实现遍历一个文件夹的操作？
+固定文本替换用 `str.replace()`；按规则替换用 `re.sub()`，不必所有替换都引入正则。
 
-- `os.walk(path)`
-- `os.listdir(path)`
-- `os.scandir(path)`，配合 `with`
-- `pathlib.Path(path).iterdir()`
+## 日期与时区
 
-```python
-from pathlib import Path
-
-for path in Path("/Users/Hao/Downloads").rglob("*"):
-    print(path)
-```
+存储时间通常使用带时区的 UTC，展示时再转换到用户时区。
 
 ```python
-import os
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
-for root, dir_names, file_names in os.walk("/Users/Hao/Downloads"):
-    for dir_name in dir_names:
-        print(os.path.join(root, dir_name))
-    for file_name in file_names:
-        print(os.path.join(root, file_name))
+now = datetime.now(UTC)
+shanghai = now.astimezone(ZoneInfo("Asia/Shanghai"))
+text = shanghai.strftime("%Y-%m-%d %H:%M:%S %Z")
+parsed = datetime.strptime("2026-07-10", "%Y-%m-%d").replace(tzinfo=UTC)
 ```
 
-## Python 中如何实现字符串替换操作？
+## 命名元组与不可变数据
 
-- `re.compile().sub()`
-- `str.replace()`
-
-## 如何读取大于内存的文件？
-
-- 分片
-- 分段读取
-- 通过 `read()` 方法的 `size` 参数指定读取的大小
-- 通过 `seek()` 方法的 `offset` 参数指定读取的位置
+`namedtuple` 为元组字段提供名字，也可以通过子类增加方法。`_asdict()` 转成字典，`_replace()` 返回替换了字段的新对象。
 
 ```python
-chunk_size = 2 * 1024 * 1024
+from collections import namedtuple
 
-with open("large_file.bin", "rb") as file:
-    for chunk in iter(lambda: file.read(chunk_size), b""):
-        process(chunk)
+Card = namedtuple("Card", ("suit", "rank"))
+card = Card("红桃", 13)
+assert card.suit == "红桃"
+assert card._replace(suit="方块") == Card("方块", 13)
+assert card._asdict() == {"suit": "红桃", "rank": 13}
 ```
+
+需要类型标注时可选 `typing.NamedTuple`；需要数据对象时可用 `dataclass(frozen=True)`。冻结只禁止字段重新赋值，不会递归冻结字段引用的列表等对象。
+
+```python
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Point:
+    horizontal: int
+    vertical: int
+```
+
+集合去重且不可变可用 `frozenset`；有实际性能需求时再评估第三方 `immutables.Map`。
+
+## 迭代工具
+
+`itertools` 适合组合、惰性读取和序列拼接；`more-itertools` 补充分块、滑动窗口等配方。
+
+```python
+from itertools import chain, islice, pairwise
+
+values = list(chain([1, 2], [3, 4]))
+first_three = list(islice(range(100), 3))
+pairs = list(pairwise(["a", "b", "c"]))
+```
+
+## 资源管理与文件锁
+
+简单资源用 `with`；多个动态资源用 `ExitStack`，异步资源用 `AsyncExitStack`。`atexit` 只用于兜底清理，不依赖它做关键业务提交。
+
+```python
+from contextlib import ExitStack
+
+paths = ["a.txt", "b.txt"]
+with ExitStack() as stack:
+    files = [stack.enter_context(open(filename, encoding="utf-8")) for filename in paths]
+    data = [file.read() for file in files]
+```
+
+跨进程修改同一文件可用 `filelock`。直接使用 `fcntl` 或 `msvcrt` 时，需要处理平台差异；网络文件系统的锁行为另行确认。
+
+## 压缩、标识与校验
+
+| 任务 | 工具 | 注意点 |
+| --- | --- | --- |
+| 压缩与解压 | `zipfile`、`tarfile` | 解压不可信文件时限制目标路径、大小和数量 |
+| 紧凑位数组 | `bitarray` | 适合 bitmap、布隆过滤器等 |
+| 随机 UUID | `uuid.uuid4()` | 不依赖中心服务；不是顺序 ID |
+| 时间有序 UUID | Python 3.14 的 `uuid.uuid7()`，或旧版 Python 的 `uuid6` 包 | 按运行版本选择；不代表泄漏后仍安全 |
+| CRC 校验 | `binascii.crc32()` | 检测意外变化，不是密码学哈希 |
+
+Linux 命令速查：
+
+```bash
+tar -czf archive.tar.gz notes
+tar -xzf archive.tar.gz
+zip -r notes.zip notes
+unzip notes.zip
+```
+
+## 相关内容
+
+- [[concurrency.ipynb|并发与任务队列]]：线程、进程、协程与队列的运行示例。
+- [[learning/web/networking|网络服务]]：socket、HTTPX 与 SSH 客户端。

@@ -1,179 +1,107 @@
 ---
 date created: 2024-07-29 11:55
-date updated: 2026-10-26T13:16
+date updated: 2026-11-06T18:26
 ---
 
 # Flask
 
-## Flask 优势（为什么选择 Flask）
+Flask 是基于 WSGI 的轻量 Web 框架，内置路由、上下文、Jinja 模板和测试客户端。ORM、表单和认证按需接入扩展，不必为了“完整”一次安装全部工具。
 
-- 具有很小的 API，可以快速学习
-- 符合 WSGI
-- 具有内置的开发服务器
-- 具有活跃的社区
-- 具有大量的第三方扩展
+需要 API 契约和类型校验时可对比 [[fastapi|FastAPI]]；API、UI 与业务层的职责见 [[api|Web API 与应用]]。
 
-## 什么是 WSGI
+## 安装与启动
 
-- Python 中定义的 Web 服务器和 Web 应用程序之间或框架之间的通用接口标准
-- WSGI 将 Web 组件分为 Web 服务器、Web 中间件、Web 应用程序
-- WSGI 就是连接服务端（网关端）和应用端（框架端）的的桥梁，WSGI 的作用就是在协议之间进行转化
-- 服务端接受 HTTP 请求，按照 WSGI 接口标准再调用注册的应用端，最后返回响应
-
-## Flask 的模板引擎
-
-- 模板是包含静态、动态数据的文件
-- 可在运行期间填充模板的动态数据，利用 Jinja 2 模板引擎使开发人员可以使用占位符的 HTML 模板创建动态数据
-- 使用 `render_template()` 方法可以在运行时填充这些占位符
-
-## Flask 组件
-
-- 路由和视图：把 URL 映射到处理函数，视图负责执行业务逻辑并返回响应。
-- 请求和响应：`request` 读取参数、Header、Body；返回值会被 Flask 转成 `Response`。
-- 上下文对象：`current_app`、`request`、`session`、`g` 基于上下文隔离当前应用和请求数据。
-- 模板和静态文件：Jinja2 渲染 HTML，`static` 目录提供 CSS、JS、图片等资源。
-- 扩展机制：通过 Flask-SQLAlchemy、Flask-WTF、Flask-Login 等扩展补充 ORM、表单、认证等能力。
-- 错误处理和测试：支持自定义错误处理器、测试客户端和 CLI 命令。
-
-## Flask 生命周期
-
-- WSGI 服务器接收 HTTP 请求并调用 Flask 应用。
-- Flask 创建应用上下文和请求上下文，让 `request`、`session`、`g` 可用。
-- 执行 `before_request`，匹配路由，调用视图函数。
-- 视图返回字符串、字典、元组或 `Response`，Flask 统一转换为响应对象。
-- 执行 `after_request` 和 `teardown_request`，发送响应并清理上下文。
-
-## Flask 定义路由
-
-- 使用 Flask 实例创建
-- 使用 BluePrint 实例创建
-
-```python
-# 动态路由
-@app.route("/user/<username>", methods=["POST", "PATCH"])
-def show_user_profile(username):
-    # 使用字符串 "username" 访问 URL 中的动态部分
-    return f"User: {username}"
-```
-
-## Flask 中如何处理请求和响应
-
-- 导入 Flask 模块
-- 创建 Flask 实例
-- 定义路由与视图函数
-- 获取请求参数
-- 构建响应
-- 运行应用
-
-## Flask 中如何使用模板引擎
-
-- 导入 `from flask import render_template`
-- 配置模板目录，`app = Flask(__name__, template_folder="templates")`
-- 定义路由与视图函数
-- 创建模板文件，`templates` 目录下创建 HTML 文件
-- 运行应用
-
-## Flask 中如何使用数据库
-
-- `from flask_sqlalchemy import SQLAlchemy`
-- 创建应用实例和配置数据库连接
-- 定义模型类
-- 初始化数据库
-- 执行 CRUD
-- 运行应用
-
-## Flask 如何使用蓝图
-
-- `from flask import Blueprint`
-- 创建蓝图实例
-- 定义路由与视图函数
-- 注册蓝图到应用
-- 运行应用
-
-## Flask 如何处理静态文件
-
-- 创建静态文件目录
-- 配置静态文件路径，`app = Flask(__name__, static_folder="static")`
-- HTML 文件引用静态文件
-- 运行应用
-
-## Flask 如何处理错误和异常
-
-- 使用 `try except`
-- 定义错误处理器
-
-```python
-from flask import render_template
-
-
-@app.errorhandler(404)
-def page_not_found(error):
-    return render_template("404.html"), 404
-
-
-@app.errorhandler(500)
-def internal_server_error(error):
-    return render_template("500.html"), 500
-```
-
-- 自定义错误响应
-
-```python
-from werkzeug.exceptions import HTTPException
-
-
-class CustomError(HTTPException):
-    code = 400
-    description = "Custom error message"
-
-@app.errorhandler(CustomError)
-def handle_custom_error(error):
-    return render_template("custom_error.html", message=error.description), error.code
-```
-
-- 全局错误处理器
-
-```python
-@app.errorhandler(Exception)
-def handle_unhandled_exception(e):
-    return "An unexpected error occurred", 500
-```
-
-## Flask 常用扩展
-
-- `flask_sqlalchemy`
-- `flask_redis`
-- `flask_mail`
-- `flask_jwt_extended`
-- `flask_restful`
-- `jinja2`
-- `session`
-
-## 如何安装 Flask
-
-- 在项目虚拟环境里安装发布版，并用 CLI 验证版本。
+在 uv 项目中安装并启动开发服务：
 
 ```bash
-python -m pip install Flask
-flask --version
+uv add flask
+uv run flask --app app run --debug
 ```
 
-## 如何本地调试 Flask 源码
-
-- 现代 Python 项目使用 `pyproject.toml` 和可编辑安装，不再使用 `python setup.py develop`。
+默认地址为 `127.0.0.1:5000`。指定监听地址与端口：
 
 ```bash
-git clone https://github.com/pallets/flask
-cd flask
-python -m pip install -e ".[dev]"
-python -m pytest
+uv run flask --app app run --host 0.0.0.0 --port 8080
 ```
 
-## 如何创建现代 AJAX 或局部更新
+`0.0.0.0` 会对外监听，调试模式只能用于可信开发环境；生产环境使用 WSGI Server，并关闭调试。
+
+```python
+from flask import Flask
+
+app = Flask(__name__)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+```
+
+## 路由、请求与响应
+
+`@app.get()`、`@app.post()` 或 `@app.route(..., methods=[...])` 将 URL 映射到视图函数。业务逻辑放服务层，视图负责协议转换。
+
+| 数据来源 | 读取方式 |
+| --- | --- |
+| 路径参数 | `/users/<int:user_id>` 对应函数参数 |
+| 查询参数 | `request.args.get("keyword")` |
+| 表单 | `request.form.get("name")` |
+| JSON | `request.get_json()` |
+| Header | `request.headers.get("User-Agent")` |
+| 文件 | `request.files["file"]` |
+
+返回字典时会转换为 JSON；`(数据, 状态码)` 可指定状态码。不要把未经转义的用户输入拼进 HTML。
+
+```python
+from flask import request
+
+
+@app.post("/api/items")
+def create_item():
+    payload = request.get_json()
+    if not isinstance(payload, dict):
+        return {"error": "JSON object required"}, 400
+    name = payload.get("name")
+    if not isinstance(name, str) or not name.strip():
+        return {"error": "name is required"}, 400
+    return {"id": 1, "name": name.strip()}, 201
+```
+
+本例只演示请求与响应，没有实现保存。常用状态码：创建用 `201`，无效输入用 `400`，未登录用 `401`，无权限用 `403`，不存在用 `404`，内部故障用 `500`。
+
+
+### URL 生成
+
+`url_for()` 根据 endpoint 和参数生成 URL，不是注册路由。重定向使用 `redirect(url_for("目标函数名"))`。
+
+```python
+from flask import Flask, url_for
+
+app = Flask(__name__)
+
+@app.route('/hello')
+def hello():
+    return 'Hello, World!'
+
+@app.route('/user/<username>')
+def profile(username):
+    return f'Profile page for {username}'
+
+with app.test_request_context():
+    print(url_for('hello'))  # 输出: /hello
+    print(url_for('profile', username='john'))  # 输出: /user/john
+```
+
+## 模板、静态文件与局部更新
+
+Jinja 模板放在 `templates`，通过 `render_template("index.html", value=...)` 渲染；静态资源放在 `static`，模板里用 `url_for("static", filename="style.css")` 引用。
+
+模板用于把数据填入 HTML；AJAX 用于不重新加载整页就请求数据、更新部分内容。现代浏览器直接使用 `fetch()`，不需要额外引入旧式回调扩展。
+
+### fetch 与 JSON
 
 - 现代浏览器直接使用内置 `fetch()`，后端返回字典或 `jsonify()`。
 - 发送 JSON 时要设置 `Content-Type: application/json`，后端用 `request.get_json()` 或 `request.json` 解析。
-- 不建议新项目使用 Flask-Sijax 这类依赖 jQuery 回调包装的旧方案。
 
 ```python
 from flask import Flask, jsonify, render_template, request
@@ -210,258 +138,74 @@ document.querySelector("#greet").addEventListener("click", async () => {
 </script>
 ```
 
-## AJAX 是什么
 
-- 用于创建交互式网页的技术
-- 可在不重新加载整个页面的情况下与服务器交换数据和更新部分网页内容（局部更新）
-- 浏览器与服务器进行异步数据交换，发送和接收数据不中断用户操作（异步通信）
+## 应用组织与上下文
 
-## Flask 默认主机地址和端口
+### 蓝图
 
-- `127.0.0.1:5000`
-
-> 主机地址就是 `localhost`
-
-## 如何修改主机地址和端口
-
-- 开发环境优先使用 Flask CLI。
-
-```bash
-flask --app app run --host 0.0.0.0 --port 8080
-```
-
-- 单文件脚本也可以在 `if __name__ == "__main__"` 中调用 `run()`。
+Blueprint 把同一业务的路由组织在一起，再注册到应用；它不是独立服务器，也不是完整的业务分层。
 
 ```python
-# run 函数值传递
-from flask import Flask
+from flask import Blueprint, Flask
 
-app = Flask(__name__)
+books = Blueprint("books", __name__)
 
-@app.route("/")
-def index():
-    return "Hello, World!"
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+@books.get("/books")
+def list_books():
+    return {"items": []}
+
+
+def create_app():
+    application = Flask(__name__)
+    application.register_blueprint(books)
+    return application
 ```
 
-## 如何在 Flask 获取请求参数
+### 上下文本地对象
 
-- 使用 `request` 对象和获取请求的参数
+| 对象 | 用途 | 生命周期 |
+| --- | --- | --- |
+| `request` | 当前 HTTP 请求 | 请求上下文 |
+| `session` | 当前用户的会话数据 | 当前请求读写，跨请求保存由会话机制实现 |
+| `current_app` | 当前应用配置与实例代理 | 应用上下文 |
+| `g` | 当前上下文临时复用数据，如连接 | 应用上下文，通常随一次请求结束 |
 
-```python
-from flask import Flask
-from flask import request
+这些是上下文本地代理，不是所有请求共享的全局变量。请求处理时自动建立上下文；脚本或初始化操作可用 `with app.app_context():`。脱离上下文访问会报错。
 
-app = Flask(__name__)
+跨请求状态应保存到会话、缓存或数据库，不放进 `g`。应用上下文也不是贯穿整个进程生命周期的一份全局容器。
 
-@app.route("/")
-def index():
-    val = request.args.get("var")
-    return f"Hello, World! {val}"
+### 请求处理
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
-```
+1. WSGI Server 将请求交给 Flask。
+2. Flask 建立上下文、匹配路由并执行请求前处理。
+3. 调用视图，将返回值转换成响应。
+4. 执行响应后处理，结束时运行清理回调并弹出上下文。
 
-## Flask 获取用户代理
+`after_request` 用于处理响应；`teardown_request` 用于清理，异常场景也应能安全执行。
 
-```python
-from flask import Flask
-from flask import request
 
-app = Flask(__name__)
+## Session 与安全
 
-@app.route("/")
-def index():
-    val = request.args.get("var")
-    user_agent = request.headers.get("User-Agent")
+### 默认存储机制
 
-    response = f"""
-    <p>
-        Hello, World! {val}
-        <br/>
-        You are accessing this app with {user_agent}
-    </p>
-    """
-    return response
+- Flask 默认使用签名 Cookie 保存 Session 数据。
+- 处理流程：序列化 Session 数据，使用 `SECRET_KEY` 签名防篡改，再编码后写入客户端 Cookie。
+- 优点是无状态、部署简单，不需要服务端会话存储。
+- 缺点是容量受 Cookie 限制，数据默认可被客户端读取，不能存敏感信息；`SECRET_KEY` 泄露会带来安全风险。
+- 非永久 Session 通常随浏览器会话结束；永久 Session 的生命周期由 `PERMANENT_SESSION_LIFETIME` 控制。
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
-```
-
-## `url_for()` 函数作用
-
-- `url_for()` 函数帮助创建动态路由
-
-```python
-from flask import Flask, url_for
-
-app = Flask(__name__)
-
-@app.route('/hello')
-def hello():
-    return 'Hello, World!'
-
-@app.route('/user/<username>')
-def profile(username):
-    return f'Profile page for {username}'
-
-with app.test_request_context():
-    print(url_for('hello'))  # 输出: /hello
-    print(url_for('profile', username='john'))  # 输出: /user/john
-```
-
-## 视图函数怎么使用 `url_for()`
-
-- 重定向
-
-```python
-from flask import Flask, redirect, url_for
-
-app = Flask(__name__)
-
-@app.route('/view1')
-def view1():
-    # 这里可以执行一些操作，然后重定向到 view2
-    return redirect(url_for('view2'))
-
-@app.route('/view2')
-def view2():
-    return 'This is view2'
-
-if __name__ == '__main__':
-    app.run()
-```
-
-## 如何在 Flask 创建管理界面
-
-- 使用 Flask-Admin 扩展在 Flask 中创建一个管理界面
-- 使用 Flask-Appbuilder 扩展，扩展已自带管理界面
-
-## 可以使用 Flask 创建哪种类型的应用程序
-
-- 可以创建几乎所有类型的 Web 应用程序
-- 单页应用程序、RESTful API 应用程序、SaaS 应用程序、中小型网站、静态网站、微服务、Serverless 应用等
-
-> 单页应用程序，动态重写当前页面与用户的交互，避免了页面的重新加载 (单页应用程序框架有 React，Angular，Vue)
-> 静态网页，静态网页是指不需要服务端处理、内容固定、不经常变化的网页
-> SaaS 是 Software as a Service，指通过网络提供的软件服务，例如在线 CRM、协作文档、云后台等
-> Serverless 应用程序，是云计算的执行模型，无需直接管理服务器，通常按事件触发和资源使用计费
-
-## 如何将 Twitter 或类似 API 与 Flask 应用程序集成
-
-- 新项目优先使用 OAuth 2.0 / OpenID Connect 客户端库，例如 Authlib。
-- 在外部身份提供商注册应用，保存 client id、client secret、redirect URI 和 scopes。
-- 回调视图校验 `state`，交换 token，再把外部账号和本地用户绑定。
-- 不建议把 Flask-Social 当作新项目首选方案；Flask-Security 更偏本地认证、权限和会话管理，不等同于第三方 OAuth 集成。
-
-## 为什么 Flask 被称为微框架
-
-- 是因为 Flask 仅提供核心功能，例如请求、路由、Blueprint
-- 对于其他功能，例如缓存，ORM，表单等需要使用其他的扩展
-
-## Flask 中的线程局部对象是什么意思
-
-- Flask 中的 `request`、`session`、`g`、`current_app` 是上下文本地代理对象，本质上根据当前请求或应用上下文找到真实对象。
-- 在多线程或协程环境中，不同请求访问到的是各自上下文中的对象，避免把请求对象手动层层传递。
-- 使用这些对象时必须处于有效上下文中，否则会出现 "Working outside of request/application context" 之类的错误。
-
-## Flask 中的应用程序上下文是什么
-
-- 是 Flask 中实现请求上下文（Request Context）和应用程序全局变量的基础
-- 主要目的是让某些对象在整个应用程序中全局可访问，如 `current_app` 和 `g` 对象
-- `<APP_NAME>.run()`（启动应用时），`with <APP_NAME>.app_context():`（显式推送）都会进入应用程序上下文
-
-> 应用程序上下文是针对整个应用程序的，是全局的，并且在整个应用程序的生命周期内都是活跃的
-> 请求上下文是针对单个 HTTP 请求的，是临时的，只在处理请求时活跃
-
-## 如何在 Flask 中创建一个 RESTful 应用程序
-
-- 小型 API 可以直接使用 Flask 路由返回字典或 `jsonify()`。
-- 需要 OpenAPI、请求校验和类型契约时，可以接入 Pydantic、apispec、Connection 或 APIFlask。
-- 已有 Flask 项目需要资源路由组织时，可以评估 Flask-RESTX；API-first 新项目也可以直接评估 FastAPI。
-
-```python
-from flask import Flask, request
-
-app = Flask(__name__)
-
-@app.post("/api/items")
-def create_item():
-    payload = request.get_json()
-    return {"id": 1, "name": payload["name"]}, 201
-```
-
-## 如何调试 Flask 应用程序
-
-- Flask 内置开发服务器支持调试模式，现代命令优先使用 `--debug`。
-
-```bash
-flask --app app run --debug
-```
-
-> 在部署到生产环境前应禁用调试模式
-
-## Flask 命令
-
-- 激活虚拟环境后使用 Flask CLI。自定义管理命令需要项目自己注册。
-
-```bash
-# 查看版本
-flask --version
-
-# 生成 SECRET_KEY
-python -c "import secrets; print(secrets.token_hex(32))"
-
-# 查看注册的路由
-flask --app app routes
-
-# 启动开发服务器
-flask --app app run --debug
-
-# 测试应用程序
-python -m pytest
-
-# 进入命令行
-flask --app app shell
-```
-
-> [Flask 官方文档](https://flask.palletsprojects.com)
-> [Flask 安装文档](https://flask.palletsprojects.com/en/stable/installation/)
-> [Flask JavaScript、fetch 和 JSON](https://flask.palletsprojects.com/en/stable/patterns/javascript/)
-
-## Django 和 Flask（Flask 定义）
-
-- Django
-	- 是使用 Python 编程语言创建的 Web 开发框架
-	- 有许多内置功能，如管理员后端和具有迁移功能的 ORM
-	- 创建时间早，更加成熟
-- Flask
-	- 是使用 Python 编程语言创建的且开源的 Web 开发框架
-	- 该框架基于 Jinja 2 模板引擎和 WSGI Web 应用程序库之上
-	- 适用于快速开发，简单易学（API 少）
-	- 适合不需要大型代码库的轻量级 Web 应用程序
-		- 易于开发微服务和 Serverless 的应用程序
-
-## Flask 与 SQLite
-
-- SQLite 是 Python 内置的数据库
-- 在视图内部导入 SQLite 并编写 SQL 语句就可直接和数据库交互
-- Flask 通常使用 Flask-SQLAlchemy 扩展
-
-> ORM 内容见独立的数据笔记；当前文件只保留 Flask 中的使用方式。
-
-## 在 Flask 中使用 Session
+### 读写会话
 
 - `from flask import session`
 
 ```python
 # 在请求之间保存数据可以使用 session
+import os
+
 from flask import Flask, session
 app = Flask(__name__)
-app.secret_key = "<secret-key>"
+app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
 
 @app.route("/use_session")
 def use_session():
@@ -475,63 +219,69 @@ def delete_session():
     return "removed song from session"
 ```
 
-## Flask 的 `g` 对象
+### 第三方登录
 
-- `g` 是请求/应用上下文中的临时命名空间，常用于保存当前请求期间复用的数据，如数据库连接、当前用户等。
-- `g` 的生命周期通常随请求结束而结束，不适合跨请求保存数据。
-- 跨请求状态应放在 Session、缓存、数据库或其他持久化存储中。
+OAuth 2.0 / OpenID Connect 可评估 Authlib。注册客户端、配置回调地址与 scopes，校验 `state`，按流程启用 PKCE，并验证身份提供方返回的数据。认证、权限与 CSRF 保护不是同一件事。
 
-> 每个请求都有单独的 `g` 对象，实现了请求隔离和数据隔离
+Flask-Login 偏登录会话管理，Flask-JWT-Extended 偏 Token；选择取决于认证方式，不能只靠一个扩展名称就认为权限已完整实现。
 
-## Flask 可以通过哪些方式连接数据库
 
-- 使用 Flask-SQLAlchemy 扩展
-- 对于 NoSQL 数据库，使用 Flask-MongoEngine (MongoDB)，Flask-Redis (Redis)
+## 数据库与扩展
 
-## Flask 蓝图的作用
+持久化分层、驱动、连接池与主键选择统一见 [[learning/data/orm|数据持久化与 ORM]]，SQL 与索引原理见 [[learning/data/sql|SQL]]。Flask 可以使用 `sqlite3`、数据库驱动或 Flask-SQLAlchemy，使用 Redis、MongoDB 时再接入对应客户端。
 
-- 构建大型应用
-- 优化项目结构
-- 使功能模块化
-- 增强可读性
-- 易于维护
+Flask-SQLAlchemy 的基本流程是配置连接 → 定义模型 → 初始化扩展 → 在事务中读写 → 提交或回滚。实际项目用迁移维护表结构。
+
+### Flask-SQLAlchemy 索引
 
 ```python
-from flask import Blueprint
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
 
-book_bp = Blueprint("book", __name__)
-
-@book_bp.route("/books")
-def list_books():
-    return "book list"
-
-# 在应用工厂或 app 初始化处注册蓝图
-from book import book_bp
-app.register_blueprint(book_bp)
+    __table_args__ = (
+        db.Index("ix_user_email", "email"),
+        db.UniqueConstraint("username", "email", name="uq_user_username_email"),
+    )
 ```
 
-## Flask 框架默认 Session 处理机制
+> 在字段中设置 `index=True` 自动添加索引
+> 在 `__table_args__` 可手动设置其他索引，参数为元组
 
-- Flask 默认使用签名 Cookie 保存 Session 数据。
-- 处理流程：序列化 Session 数据，使用 `SECRET_KEY` 签名防篡改，再编码后写入客户端 Cookie。
-- 优点是无状态、部署简单，不需要服务端会话存储。
-- 缺点是容量受 Cookie 限制，数据默认可被客户端读取，不能存敏感信息；`SECRET_KEY` 泄露会带来安全风险。
-- 非永久 Session 通常随浏览器会话结束；永久 Session 的生命周期由 `PERMANENT_SESSION_LIFETIME` 控制。
+### 按需选择扩展
 
-## Flask-WTF 是什么
+| 需求 | 工具 | 边界 |
+| --- | --- | --- |
+| 关系数据库 ORM | Flask-SQLAlchemy | 不代替 SQL、事务和迁移知识 |
+| 表单与 CSRF | Flask-WTF | 模板必须包含 CSRF 字段 |
+| 管理后台 | Flask-Admin、Flask-AppBuilder | 对外提供前先配置认证和权限 |
+| 邮件 | Flask-Mail 或标准库 | 凭据用外部配置，不通过公开接口任意发送 |
+| API schema 与文档 | APIFlask、Pydantic 等 | 先明确 schema 与 HTTP 层的边界 |
+
+Jinja2 是模板引擎，`session` 是 Flask 提供的会话对象，不把它们列成需要额外安装的 Flask 扩展。
+
+
+## Flask-WTF 表单
+
+```bash
+uv add flask-wtf email-validator
+```
 
 - 适用于表单处理，数据校验并提供 CSRF 验证的功能扩展
 - 能够使表单免受 CSRF（跨站请求伪造） 的攻击
 - 可提供 `FileField` 处理文件上传，在表单提交后，自动从 `flask.request.files` 中抽取数据
 
 ```python
+import os
+
 from flask import Flask, render_template, flash, redirect, url_for
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import DataRequired, Email
 
 app = Flask(__name__)
-app.secret_key = "<secret-key>"  # 应从环境变量或密钥管理系统读取
+app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
 
 # 定义表单类
 class MyForm(FlaskForm):
@@ -590,9 +340,15 @@ if __name__ == "__main__":
 
 > `FileField.data` 属于 `Werkzeug` 对象
 
-## Flask 中添加邮件功能
+## Flask-Mail 邮件
+
+```bash
+uv add flask-mail
+```
 
 ```python
+import os
+
 from flask import Flask
 from flask_mail import Mail, Message
 
@@ -602,8 +358,8 @@ app = Flask(__name__)
 app.config["MAIL_SERVER"] = "smtp.example.com"
 app.config["MAIL_PORT"] = 587
 app.config["MAIL_USE_TLS"] = True
-app.config["MAIL_USERNAME"] = "your_email@example.com"
-app.config["MAIL_PASSWORD"] = "your_password"
+app.config["MAIL_USERNAME"] = os.environ["MAIL_USERNAME"]
+app.config["MAIL_PASSWORD"] = os.environ["MAIL_PASSWORD"]
 
 mail = Mail(app)
 
@@ -617,36 +373,51 @@ if __name__ == "__main__":
     app.run(debug=True)
 ```
 
-## 状态码
+## 错误处理与测试
 
-- `1xx`：信息响应，如 `100 Continue`。
-- `2xx`：成功，如 `200 OK`、`201 Created`、`204 No Content`。
-- `3xx`：重定向，如 `301 Moved Permanently`、`302 Found`、`304 Not Modified`。
-- `4xx`：客户端错误，如 `400 Bad Request`、`401 Unauthorized`、`403 Forbidden`、`404 Not Found`。
-- `5xx`：服务端错误，如 `500 Internal Server Error`、`502 Bad Gateway`、`503 Service Unavailable`。
-
-## DBUtils 模块的作用
-
-- 实现数据库连接池
-- 为了提高在多线程场景请求较多时的性能
-
-## Flask-SQLAlchemy 设置索引
+已知业务错误转换为稳定的错误响应，预期的 HTTP 错误保留原有状态码。不要用无差别捕获 `Exception` 把所有 `404` 都变成 `500`。
 
 ```python
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-
-    __table_args__ = (
-        db.Index("ix_user_email", "email"),
-        db.UniqueConstraint("username", "email", name="uq_user_username_email"),
-    )
+@app.errorhandler(404)
+def page_not_found(error):
+    return {"error": "not found"}, 404
 ```
 
-> 在字段中设置 `index=True` 自动添加索引
-> 在 `__table_args__` 可手动设置其他索引，参数为元组
+自定义业务错误可继承 `werkzeug.exceptions.HTTPException`，设置状态码后注册处理器。错误页也可用 `render_template()` 渲染，但不要向客户端暴露异常栈。
 
-## Flask 如何配置到 Nginx 中
+Flask 自带测试客户端，不需要真实监听端口：
 
-- 略
+```python
+def test_health():
+    with app.test_client() as client:
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json == {"status": "ok"}
+```
+
+## 调试与部署
+
+```bash
+uv run flask --app app routes
+uv run flask --app app shell
+uv run python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+阅读 Flask 源码时可克隆官方仓库并可编辑安装：
+
+```bash
+git clone https://github.com/pallets/flask
+cd flask
+uv venv
+uv pip install -e ".[dev]"
+uv run python -m pytest
+```
+
+Nginx、Caddy 和 WSGI/ASGI 的部署边界见 [[networking|网络服务]]，交付流程见 [[learning/engineering/deployment|交付与部署]]。
+
+## 参考
+
+- [Flask 官方文档](https://flask.palletsprojects.com/)
+- [Flask JavaScript、fetch 和 JSON](https://flask.palletsprojects.com/en/stable/patterns/javascript/)
+- [Flask-WTF 文档](https://flask-wtf.readthedocs.io/)

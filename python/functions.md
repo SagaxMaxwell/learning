@@ -1,6 +1,6 @@
 ---
 date created: 2024-07-01 13:13
-date updated: 2026-10-26T13:15
+date updated: 2026-11-06T15:36
 ---
 
 # Python 函数与对象
@@ -24,11 +24,41 @@ date updated: 2026-10-26T13:15
 - 当创建类的新对象/实例时，会自动调用此方法来初始化对象成员
 - 所有类都有 `__init__` 方法
 
-## Python 装饰器？
+## 装饰器
 
-- 函数是执行特定任务的代码块，而装饰器是修改/扩展其他函数的函数
-- 装饰器可以用来装饰类或函数，为其提供额外的能力
-- 装饰器本身也可以参数化
+装饰器接收函数并返回一个可调用对象，用来增加计时、日志、鉴权等行为。带参数时，最外层先接收配置，再返回真正的装饰器。
+
+```python
+from collections.abc import Callable
+from functools import wraps
+from time import perf_counter
+from typing import ParamSpec, TypeVar
+
+Parameters = ParamSpec("Parameters")
+Result = TypeVar("Result")
+
+
+def timer(label: str) -> Callable[[Callable[Parameters, Result]], Callable[Parameters, Result]]:
+    def decorate(function: Callable[Parameters, Result]) -> Callable[Parameters, Result]:
+        @wraps(function)
+        def wrapper(*args: Parameters.args, **kwargs: Parameters.kwargs) -> Result:
+            started = perf_counter()
+            try:
+                return function(*args, **kwargs)
+            finally:
+                print(f"{label}: {perf_counter() - started:.3f}s")
+
+        return wrapper
+
+    return decorate
+
+
+@timer("读取配置")
+def read_config() -> bytes:
+    return b"\x01\x02"
+```
+
+`wraps` 保留函数名称、文档和 `__wrapped__`，便于调试及签名检查；`ParamSpec` 和 `TypeVar` 保留参数与返回值的类型关系。它不会自动处理异步函数，异步包装器还需要 `async def` 和 `await`。
 
 ## Python 中的迭代器是什么？
 
@@ -211,3 +241,40 @@ item.who()
 - Python 使用 C3 线性化算法确定 MRO。拿不准顺序时，直接查看类的 `mro()` 方法或 `__mro__` 属性。
 
 > MRO 是解析方法顺序的机制
+
+## 类型标注与接口
+
+`Annotated` 在类型之外附加元数据；类型检查器仍看到基础类型，Pydantic 等框架可以读取元数据。
+
+```python
+from typing import Annotated, get_args, get_origin
+
+UserId = Annotated[int, "positive database id"]
+
+assert get_origin(UserId) is Annotated
+assert get_args(UserId) == (int, "positive database id")
+```
+
+`Protocol` 描述对象需要具备的接口，不提供具体实现。`runtime_checkable` 允许在运行时检查属性或方法是否存在，但不会验证完整的参数签名和类型。
+
+```python
+from typing import Protocol, runtime_checkable
+
+
+@runtime_checkable
+class Closer(Protocol):
+    def close(self) -> None: ...
+
+
+def close_if_needed(value: object) -> None:
+    if isinstance(value, Closer):
+        value.close()
+```
+
+输入数据的实际校验见 [[validation|校验与序列化]]，不能把类型标注当成自动运行时校验。
+
+## Java 的 static 与 Python 的区别
+
+Java 的静态字段属于类，静态方法不需要实例，静态初始化块在类初始化时执行，不能声明返回值或参数。共享可变字段需要注意并发和实例之间的相互影响。
+
+Python 的类属性、`@staticmethod`、`@classmethod` 也能表达部分相似意图，但不要直接套用 Java 的类加载和生命周期规则。

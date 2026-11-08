@@ -1,6 +1,6 @@
 ---
 date created: 2024-07-11 18:54
-date updated: 2026-10-26T13:06
+date updated: 2026-11-06T18:18
 ---
 
 # MySQL
@@ -67,20 +67,7 @@ ORDER BY salary DESC;
 
 ### 联合索引的 MySQL 语境
 
-联合索引按定义顺序组织，例如：
-
-```sql
-CREATE INDEX idx_dept_salary ON employees (dept_id, salary);
-```
-
-它适合从 `dept_id` 开始的条件、排序或范围访问。跳过最左列，后续列通常不能独立用于索引定位；范围条件之后的列是否继续用于过滤，要结合执行计划判断，不要绝对化记忆。
-
-```sql
--- 适合索引定位
-SELECT id, name
-FROM employees
-WHERE dept_id = 1 AND salary >= 18000;
-```
+通用规则和示例见 [[sql#联合索引的常见理解]]。MySQL 的范围扫描、跳跃扫描和后续字段过滤依赖版本及执行计划，不把“最左前缀”当成无例外的口号。
 
 ### 索引下推
 
@@ -92,18 +79,7 @@ WHERE dept_id = 1 AND salary >= 18000;
 
 MySQL 默认开启自动提交。需要把多条语句作为一个事务时，显式使用：
 
-```sql
-START TRANSACTION;
-
-UPDATE employees
-SET salary = salary + 500
-WHERE id = 1;
-
-COMMIT;
--- 发现结果不符合预期时，在 COMMIT 前执行 ROLLBACK;
-```
-
-通用的事务执行逻辑和隔离级别见 [[sql#事务：让多步操作整体成功或失败]]。
+`START TRANSACTION` 或 `BEGIN`。开始、检查、提交与回滚的完整示例只维护在 [[sql#事务：让多步操作整体成功或失败]]，不要把 `COMMIT` 和 `ROLLBACK` 当成要先后执行的固定步骤。
 
 ### 当前读与快照读
 
@@ -130,36 +106,11 @@ COMMIT;
 
 ### 显式锁定
 
-```sql
-START TRANSACTION;
-
-SELECT id, salary
-FROM employees
-WHERE id = 1
-FOR UPDATE;
-
-UPDATE employees
-SET salary = salary + 500
-WHERE id = 1;
-
-COMMIT;
-```
-
-`FOR UPDATE` 通常用于事务内先读后改的场景。锁的使用必须配合短事务，否则容易造成等待和死锁。
+支持 `SELECT … FOR UPDATE` 的数据库都可用它表达事务内先读后改；通用示例见 [[sql#悲观锁与乐观并发控制]]。InnoDB 实际锁住哪些记录和间隙，仍取决于索引、条件和隔离级别。
 
 ### 乐观锁
 
-MySQL 没有单独的“乐观锁”关键字，常用版本号实现：
-
-```sql
-UPDATE employees
-SET salary = salary + 500,
-    version = version + 1
-WHERE id = 1
-  AND version = 3;
-```
-
-检查受影响行数为 `1` 才表示更新成功；为 `0` 表示版本已变化，需要重读、提示冲突或重试。
+版本号条件更新不是 MySQL 专有功能，见 [[sql#悲观锁与乐观并发控制]]。
 
 ## 复制与高并发
 
@@ -177,29 +128,17 @@ MySQL 复制以 `binlog` 为基础：主库记录变更，从库拉取并回放�
 
 ### 分库分表
 
-- 垂直分库：按业务拆库。
-- 垂直分表：把低频或大字段拆到扩展表。
-- 水平分表：按用户、时间或分片键拆分数据。
+这是通用架构问题，不是 MySQL 专有功能，分片键、哈希与跨分片查询见 [[learning/engineering/system-design#写扩展（Scaling Writes）|系统设计]]。能通过索引、归档或合理拆表解决时，不要过早分库。
 
-分库分表会带来跨库查询、分页、排序、事务和数据迁移成本。能通过索引、归档或合理拆表解决时，不要过早分库。
-
-## MySQL 特有的工程问题
+## 通用工程问题入口
 
 ### 深分页
 
-`LIMIT offset, size` 需要先扫描并丢弃前面的记录，偏移量很大时会变慢。常用游标式分页：
-
-```sql
-SELECT id, name
-FROM employees
-WHERE id > 10000
-ORDER BY id
-LIMIT 20;
-```
+偏移分页与游标式分页见 [[sql#LIMIT：限制结果数量]]，这里不维护第二份查询。
 
 ### 雪花 ID
 
-分布式系统常用雪花算法生成趋势递增的 64 位 ID。它通常由时间戳、机器标识和序列号组成，但要处理时钟回拨、机器标识分配和 JavaScript 精度等问题。
+递增 ID、UUID 与雪花 ID 的选择见 [[orm#主键选择]]，这些方案不属于 MySQL 专属语法。
 
 ## 速查
 
